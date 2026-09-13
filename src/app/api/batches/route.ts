@@ -12,8 +12,34 @@ export async function GET(request: Request) {
   }
 
   const { searchParams } = new URL(request.url);
+  const batchIdParam = searchParams.get('batch_id');
   const fetchAll = searchParams.get('all') === 'true' || user.role === 'admin';
   const targetClientId = searchParams.get('client_id');
+
+  // If specific batch_id requested
+  if (batchIdParam) {
+    const batch = db.prepare(`
+      SELECT b.*, c.name as client_name, c.email as client_email
+      FROM batches b
+      JOIN clients c ON c.id = b.client_id
+      WHERE b.id = ?
+    `).get(batchIdParam) as any;
+
+    if (!batch) {
+      return NextResponse.json({ batch: null, items: [] });
+    }
+
+    const items = db.prepare(`
+      SELECT ci.*, 
+        (SELECT er.client_note FROM edit_requests er WHERE er.content_item_id = ci.id AND er.status != 'done' ORDER BY er.created_at DESC LIMIT 1) as client_note,
+        (SELECT er.id FROM edit_requests er WHERE er.content_item_id = ci.id AND er.status != 'done' ORDER BY er.created_at DESC LIMIT 1) as active_edit_request_id
+      FROM content_items ci
+      WHERE ci.batch_id = ?
+      ORDER BY ci.day_number ASC, ci.created_at ASC
+    `).all(batch.id);
+
+    return NextResponse.json({ batch, items });
+  }
 
   // Admin overview or explicit request for all batches
   if (fetchAll && !targetClientId) {

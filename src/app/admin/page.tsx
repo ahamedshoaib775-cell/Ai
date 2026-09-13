@@ -197,10 +197,10 @@ export default function AdminOverviewPage() {
                     </span>
                   )}
                   <Link
-                    href={`/admin/requests?client_id=${b.client_id}`}
+                    href={`/admin/batches/${b.id}`}
                     className="text-[#0866FF] hover:underline font-semibold text-xs flex items-center gap-1"
                   >
-                    View Details
+                    View Details <ArrowRight className="w-3.5 h-3.5" />
                   </Link>
                 </div>
               </div>
