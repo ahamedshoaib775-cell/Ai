@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Users, PlusCircle, AlertCircle, CheckCircle2, ArrowRight, Calendar } from 'lucide-react';
+import { Users, PlusCircle, AlertCircle, CheckCircle2, ArrowRight, Calendar, Sparkles, Tag, Megaphone, Clock } from 'lucide-react';
 
 export default function AdminOverviewPage() {
   const [batches, setBatches] = useState<any[]>([]);
@@ -33,11 +33,16 @@ export default function AdminOverviewPage() {
       }
     }
     loadData();
+    const interval = setInterval(loadData, 3000);
+    return () => clearInterval(interval);
   }, []);
 
   const totalClients = clients.length;
   const totalApproved = batches.reduce((acc, b) => acc + (b.approved_count || 0), 0);
   const totalEditReq = batches.reduce((acc, b) => acc + (b.edit_requested_count || 0), 0);
+
+  // Clients who completed onboarding but don't have a 7-day batch created yet
+  const clientsNeedingBatch = clients.filter((c) => c.onboarding_completed === 1 && (c.batch_count || 0) === 0);
 
   return (
     <div className="space-y-8">
@@ -46,7 +51,7 @@ export default function AdminOverviewPage() {
         <div>
           <h1 className="text-2xl font-bold text-[#050505] tracking-tight">Admin Management Dashboard</h1>
           <p className="text-sm text-[#65676B] mt-1">
-            Oversee weekly content batches, edit requests, and client accounts.
+            Oversee weekly content batches, client business submissions, and edit requests.
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -98,8 +103,61 @@ export default function AdminOverviewPage() {
         </div>
       </div>
 
+      {/* 🌟 New Business Submissions Panel (Clients waiting for batch upload) */}
+      {clientsNeedingBatch.length > 0 && (
+        <div className="bg-white border border-[#0866FF]/30 rounded-xl overflow-hidden shadow-sm">
+          <div className="p-4 bg-[#0866FF]/5 border-b border-[#0866FF]/20 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-[#0866FF]" />
+              <h2 className="font-bold text-sm text-[#050505]">
+                New Business Submissions — Ready for Batch Upload ({clientsNeedingBatch.length})
+              </h2>
+            </div>
+            <span className="text-xs font-bold text-[#0866FF] px-2.5 py-0.5 rounded-full bg-[#0866FF]/10">
+              Action Required
+            </span>
+          </div>
+
+          <div className="divide-y divide-[#E4E6EA]">
+            {clientsNeedingBatch.map((c) => (
+              <div key={c.id} className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-[#F0F2F5]/50 transition-colors">
+                <div className="space-y-2 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-base text-[#050505]">{c.name}</span>
+                    <span className="text-xs text-[#65676B]">({c.email})</span>
+                  </div>
+
+                  <div className="p-3 bg-[#F0F2F5] rounded-lg border border-[#E4E6EA] text-xs text-[#050505] space-y-1">
+                    <div className="flex flex-wrap items-center gap-3 font-semibold text-[#0866FF]">
+                      <span className="flex items-center gap-1">
+                        <Tag className="w-3.5 h-3.5" /> Niche: {c.business_niche || 'Not specified'}
+                      </span>
+                      {c.brand_tone && (
+                        <span className="flex items-center gap-1 text-[#65676B]">
+                          <Megaphone className="w-3.5 h-3.5 text-[#0866FF]" /> Tone: {c.brand_tone}
+                        </span>
+                      )}
+                    </div>
+                    {c.business_description && (
+                      <p className="text-[#65676B] italic mt-1">&quot;{c.business_description}&quot;</p>
+                    )}
+                  </div>
+                </div>
+
+                <Link
+                  href={`/admin/batches/new?client_id=${c.id}`}
+                  className="px-5 py-2.5 bg-[#0866FF] hover:bg-[#0055D4] text-white font-bold rounded-lg text-xs transition-colors flex items-center justify-center gap-2 shrink-0 shadow-xs"
+                >
+                  <PlusCircle className="w-4 h-4" /> Upload Pictures for Client
+                </Link>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Batches Overview List */}
-      <div className="bg-white border border-[#E4E6EA] rounded-xl overflow-hidden">
+      <div className="bg-white border border-[#E4E6EA] rounded-xl overflow-hidden shadow-sm">
         <div className="p-5 border-b border-[#E4E6EA] flex items-center justify-between">
           <h2 className="font-bold text-base text-[#050505]">Active Client Batches</h2>
           <Link href="/admin/batches/new" className="text-xs font-semibold text-[#0866FF] hover:underline flex items-center gap-1">

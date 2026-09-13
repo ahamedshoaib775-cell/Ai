@@ -1,8 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { Sparkles, Upload, Plus, Trash2, Tag, Megaphone, Info } from 'lucide-react';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Sparkles, Upload, Plus, Trash2, Tag, Megaphone } from 'lucide-react';
+
+export const dynamic = 'force-dynamic';
 
 interface BatchItem {
   id: string;
@@ -14,10 +16,13 @@ interface BatchItem {
   hashtags: string;
 }
 
-export default function AdminNewBatchPage() {
+function NewBatchContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const paramClientId = searchParams.get('client_id');
+
   const [clients, setClients] = useState<any[]>([]);
-  const [selectedClientId, setSelectedClientId] = useState('');
+  const [selectedClientId, setSelectedClientId] = useState(paramClientId || '');
   const [weekStartDate, setWeekStartDate] = useState('2026-09-15');
   const [weekEndDate, setWeekEndDate] = useState('2026-09-21');
   const [activeDay, setActiveDay] = useState(1);
@@ -44,7 +49,11 @@ export default function AdminNewBatchPage() {
           const data = await res.json();
           setClients(data.clients || []);
           if (data.clients && data.clients.length > 0) {
-            setSelectedClientId(data.clients[0].id);
+            if (paramClientId && data.clients.some((c: any) => c.id === paramClientId)) {
+              setSelectedClientId(paramClientId);
+            } else if (!selectedClientId) {
+              setSelectedClientId(data.clients[0].id);
+            }
           }
         }
       } catch (e) {
@@ -67,7 +76,7 @@ export default function AdminNewBatchPage() {
       });
     }
     setItems(initialItems);
-  }, []);
+  }, [paramClientId]);
 
   const handleFileUpload = async (itemId: string, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -113,12 +122,11 @@ export default function AdminNewBatchPage() {
     setAiTargetItemId(itemId);
     const item = items.find((i) => i.id === itemId);
 
-    // Auto-fill from selected client business profile!
     if (selectedClient) {
       setAiNiche(selectedClient.business_niche || 'Digital Agency');
       setAiTone(selectedClient.brand_tone || 'Professional & Modern');
       setAiDescription(
-        selectedClient.business_description || `A visual concept for Day ${item?.day_number} ${item?.type}`
+        selectedClient.business_description || `Visual concept for Day ${item?.day_number} ${item?.type}`
       );
     } else {
       setAiNiche('Digital Agency');
@@ -216,7 +224,7 @@ export default function AdminNewBatchPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E4E6EA] pb-5">
         <div>
           <h1 className="text-2xl font-bold text-[#050505] tracking-tight">7-Day Batch Builder</h1>
-          <p className="text-sm text-[#65676B] mt-1">Upload custom 7-day content for client review & approval.</p>
+          <p className="text-sm text-[#65676B] mt-1">Upload custom 7-day picture content for client review & approval.</p>
         </div>
 
         <button
@@ -224,7 +232,7 @@ export default function AdminNewBatchPage() {
           disabled={saving}
           className="px-6 py-2.5 bg-[#0866FF] hover:bg-[#0055D4] text-white font-semibold rounded-lg text-sm transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
         >
-          {saving ? 'Publishing...' : 'Save & Publish Batch to Client'}
+          {saving ? 'Publishing Pictures...' : 'Save & Publish Batch to Client'}
         </button>
       </div>
 
@@ -289,10 +297,12 @@ export default function AdminNewBatchPage() {
             <div className="flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-[#0866FF] shrink-0" />
               <span>
-                Saved Business Profile: <strong className="text-[#0866FF]">{selectedClient.business_niche}</strong> ({selectedClient.brand_tone || 'Standard Tone'})
+                Submitted Business Profile: <strong className="text-[#0866FF]">{selectedClient.business_niche}</strong> ({selectedClient.brand_tone || 'Standard Tone'})
               </span>
             </div>
-            <span className="text-[#65676B] text-[11px] italic truncate max-w-sm">&quot;{selectedClient.business_description}&quot;</span>
+            {selectedClient.business_description && (
+              <span className="text-[#65676B] text-[11px] italic truncate max-w-sm">&quot;{selectedClient.business_description}&quot;</span>
+            )}
           </div>
         )}
       </div>
@@ -473,7 +483,7 @@ export default function AdminNewBatchPage() {
 
             {selectedClient?.business_niche && (
               <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-lg flex items-center gap-2 font-medium">
-                ✓ Auto-filled from {selectedClient.name}&apos;s saved business profile!
+                ✓ Auto-filled from {selectedClient.name}&apos;s submitted business profile!
               </div>
             )}
 
@@ -545,5 +555,13 @@ export default function AdminNewBatchPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function AdminNewBatchPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-sm text-[#65676B]">Loading batch builder...</div>}>
+      <NewBatchContent />
+    </Suspense>
   );
 }

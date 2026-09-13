@@ -16,9 +16,8 @@ import {
   X,
   ShieldCheck,
   Check,
-  Building2,
   Tag,
-  Megaphone
+  Loader2
 } from 'lucide-react';
 import ClientOnboardingForm from '@/components/ClientOnboardingForm';
 
@@ -83,11 +82,13 @@ export default function ClientDashboardPage() {
     fetchClientProfile();
     fetchClientBatch();
     fetchNotifications();
+
+    // Auto-poll every 3 seconds for real-time transition as soon as Admin uploads pictures!
     const interval = setInterval(() => {
       fetchClientProfile();
       fetchClientBatch();
       fetchNotifications();
-    }, 5000);
+    }, 3000);
     return () => clearInterval(interval);
   }, []);
 
@@ -308,18 +309,29 @@ export default function ClientDashboardPage() {
             }}
           />
         ) : !loading && !batch ? (
-          /* 2. Business Profile Saved, Waiting for Admin Batch */
+          /* 2. "Status: In Process — Will be posted shortly" Screen */
           <div className="bg-white border border-[#E4E6EA] rounded-2xl p-8 sm:p-12 text-center space-y-6 max-w-xl mx-auto shadow-sm my-8">
-            <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mx-auto border border-emerald-200">
-              <CheckCircle2 className="w-9 h-9" />
+            <div className="flex justify-center">
+              <span className="px-3.5 py-1 rounded-full bg-[#0866FF]/10 text-[#0866FF] font-extrabold text-xs tracking-wider flex items-center gap-2 border border-[#0866FF]/20">
+                <span className="w-2.5 h-2.5 rounded-full bg-[#0866FF] animate-ping" />
+                STATUS: IN PROCESS
+              </span>
+            </div>
+
+            <div className="w-16 h-16 bg-[#0866FF]/10 text-[#0866FF] rounded-2xl flex items-center justify-center mx-auto">
+              <Clock className="w-8 h-8" />
             </div>
 
             <div className="space-y-2">
               <h2 className="text-xl font-bold text-[#050505]">
-                Profile Active: {clientProfile?.name || 'Your Business'}
+                Content Batch In Process
               </h2>
               <p className="text-sm text-[#65676B] leading-relaxed">
-                Your business details (<strong className="text-[#050505]">{clientProfile?.business_niche || 'Custom Niche'}</strong>) have been sent to your social media manager. They are currently creating your custom 7-day Instagram content batch!
+                Your 7-day Instagram content batch for <strong className="text-[#050505]">{clientProfile?.name || 'Your Business'}</strong> (<span className="text-[#0866FF] font-semibold">{clientProfile?.business_niche || 'Custom Niche'}</span>) is currently in process and will be posted shortly within the next few minutes or hours!
+              </p>
+              <p className="text-xs text-[#65676B] pt-1 flex items-center justify-center gap-1.5">
+                <Loader2 className="w-3.5 h-3.5 text-[#0866FF] animate-spin" />
+                Your social media manager has received your business details.
               </p>
             </div>
 
@@ -328,12 +340,14 @@ export default function ClientDashboardPage() {
                 <div className="flex items-center gap-1.5 font-bold text-[#0866FF]">
                   <Tag className="w-3.5 h-3.5" /> Saved Niche: {clientProfile.business_niche}
                 </div>
-                <p className="text-[#65676B] italic">&quot;{clientProfile.business_description}&quot;</p>
+                {clientProfile.business_description && (
+                  <p className="text-[#65676B] italic">&quot;{clientProfile.business_description}&quot;</p>
+                )}
               </div>
             )}
           </div>
         ) : (
-          /* 3. Custom Batch Cards Grid */
+          /* 3. Custom 7-Day Picture Batch Cards Grid */
           <>
             <div className="bg-white border border-[#E4E6EA] rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center gap-3">

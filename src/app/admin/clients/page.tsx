@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Users, UserPlus, Mail, Tag, Megaphone, CheckCircle2, Clock, X } from 'lucide-react';
+import Link from 'next/link';
+import { Users, UserPlus, Mail, Tag, Megaphone, CheckCircle2, Clock, X, PlusCircle } from 'lucide-react';
 
 export default function AdminClientsPage() {
   const [clients, setClients] = useState<any[]>([]);
@@ -84,7 +85,7 @@ export default function AdminClientsPage() {
         <div>
           <h1 className="text-2xl font-bold text-[#050505] tracking-tight">Client Accounts & Business Profiles</h1>
           <p className="text-sm text-[#65676B] mt-1">
-            Oversee client profiles, view submitted business questionnaires, and create access credentials.
+            Oversee client profiles, view submitted business questionnaires, and upload custom picture batches.
           </p>
         </div>
         <button
@@ -159,11 +160,17 @@ export default function AdminClientsPage() {
                   )}
                 </div>
 
-                <div className="flex items-center gap-4 text-xs shrink-0">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 text-xs shrink-0">
                   <span className="px-3 py-1 rounded-full bg-[#F0F2F5] text-[#050505] font-medium">
                     Batches: <strong>{c.batch_count}</strong>
                   </span>
-                  <span className="text-[#65676B]">Joined: {new Date(c.created_at).toLocaleDateString()}</span>
+
+                  <Link
+                    href={`/admin/batches/new?client_id=${c.id}`}
+                    className="px-3.5 py-1.5 bg-[#0866FF] hover:bg-[#0055D4] text-white font-bold rounded-lg text-xs transition-colors flex items-center gap-1.5"
+                  >
+                    <PlusCircle className="w-3.5 h-3.5" /> Upload Batch
+                  </Link>
                 </div>
               </div>
             ))}
