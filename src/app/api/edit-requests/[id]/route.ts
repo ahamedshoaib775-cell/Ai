@@ -5,8 +5,8 @@ import crypto from 'crypto';
 
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
   const user = await getCurrentUser();
-  if (!user || user.role !== 'admin') {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const { id } = await context.params;

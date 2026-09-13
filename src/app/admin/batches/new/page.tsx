@@ -44,7 +44,7 @@ function NewBatchContent() {
   useEffect(() => {
     async function loadClients() {
       try {
-        const res = await fetch('/api/clients');
+        const res = await fetch('/api/clients?all=true');
         if (res.ok) {
           const data = await res.json();
           setClients(data.clients || []);
