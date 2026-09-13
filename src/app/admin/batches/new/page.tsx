@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Sparkles, Upload, Calendar, Plus, Trash2, CheckCircle2, Image as ImageIcon, Video } from 'lucide-react';
+import { Sparkles, Upload, Plus, Trash2, Tag, Megaphone, Info } from 'lucide-react';
 
 interface BatchItem {
   id: string;
@@ -29,10 +29,12 @@ export default function AdminNewBatchPage() {
   // AI Modal state
   const [aiModalOpen, setAiModalOpen] = useState(false);
   const [aiTargetItemId, setAiTargetItemId] = useState('');
-  const [aiNiche, setAiNiche] = useState('Beauty & Skincare');
-  const [aiTone, setAiTone] = useState('Inspiring, elegant and informative');
+  const [aiNiche, setAiNiche] = useState('');
+  const [aiTone, setAiTone] = useState('');
   const [aiDescription, setAiDescription] = useState('');
   const [aiGenerating, setAiGenerating] = useState(false);
+
+  const selectedClient = clients.find((c) => c.id === selectedClientId);
 
   useEffect(() => {
     async function loadClients() {
@@ -53,7 +55,6 @@ export default function AdminNewBatchPage() {
     }
     loadClients();
 
-    // Initialize 7 days default items
     const initialItems: BatchItem[] = [];
     for (let day = 1; day <= 7; day++) {
       initialItems.push({
@@ -61,8 +62,8 @@ export default function AdminNewBatchPage() {
         day_number: day,
         type: 'post',
         file_url: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?auto=format&fit=crop&w=800&q=80',
-        caption: `Day ${day} social media post caption...`,
-        hashtags: `#Day${day} #BrandStrategy #SocialMedia`,
+        caption: `Day ${day} custom post caption...`,
+        hashtags: `#Day${day} #SocialMediaStrategy`,
       });
     }
     setItems(initialItems);
@@ -111,9 +112,20 @@ export default function AdminNewBatchPage() {
   const openAiModal = (itemId: string) => {
     setAiTargetItemId(itemId);
     const item = items.find((i) => i.id === itemId);
-    if (item) {
-      setAiDescription(`A high quality visual for Day ${item.day_number} ${item.type}`);
+
+    // Auto-fill from selected client business profile!
+    if (selectedClient) {
+      setAiNiche(selectedClient.business_niche || 'Digital Agency');
+      setAiTone(selectedClient.brand_tone || 'Professional & Modern');
+      setAiDescription(
+        selectedClient.business_description || `A visual concept for Day ${item?.day_number} ${item?.type}`
+      );
+    } else {
+      setAiNiche('Digital Agency');
+      setAiTone('Professional & Modern');
+      setAiDescription(`Visual concept for Day ${item?.day_number} ${item?.type}`);
     }
+
     setAiModalOpen(true);
   };
 
@@ -204,7 +216,7 @@ export default function AdminNewBatchPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E4E6EA] pb-5">
         <div>
           <h1 className="text-2xl font-bold text-[#050505] tracking-tight">7-Day Batch Builder</h1>
-          <p className="text-sm text-[#65676B] mt-1">Upload and organize weekly content items for client review.</p>
+          <p className="text-sm text-[#65676B] mt-1">Upload custom 7-day content for client review & approval.</p>
         </div>
 
         <button
@@ -212,7 +224,7 @@ export default function AdminNewBatchPage() {
           disabled={saving}
           className="px-6 py-2.5 bg-[#0866FF] hover:bg-[#0055D4] text-white font-semibold rounded-lg text-sm transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
         >
-          {saving ? 'Publishing...' : 'Save & Publish Batch'}
+          {saving ? 'Publishing...' : 'Save & Publish Batch to Client'}
         </button>
       </div>
 
@@ -223,51 +235,66 @@ export default function AdminNewBatchPage() {
       )}
 
       {/* Batch Metadata Form */}
-      <div className="bg-white border border-[#E4E6EA] rounded-xl p-5 grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div>
-          <label className="block text-xs font-semibold text-[#050505] uppercase tracking-wider mb-1.5">
-            Target Business Client
-          </label>
-          <select
-            value={selectedClientId}
-            onChange={(e) => setSelectedClientId(e.target.value)}
-            className="w-full px-3.5 py-2 bg-white border border-[#E4E6EA] rounded-lg text-sm text-[#050505] focus:outline-none focus:border-[#0866FF]"
-          >
-            {loadingClients ? (
-              <option>Loading clients...</option>
-            ) : (
-              clients.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name} ({c.email})
-                </option>
-              ))
-            )}
-          </select>
+      <div className="bg-white border border-[#E4E6EA] rounded-xl p-5 space-y-4 shadow-sm">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-xs font-semibold text-[#050505] uppercase tracking-wider mb-1.5">
+              Target Client
+            </label>
+            <select
+              value={selectedClientId}
+              onChange={(e) => setSelectedClientId(e.target.value)}
+              className="w-full px-3.5 py-2 bg-white border border-[#E4E6EA] rounded-lg text-sm text-[#050505] focus:outline-none focus:border-[#0866FF]"
+            >
+              {loadingClients ? (
+                <option>Loading clients...</option>
+              ) : (
+                clients.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name} ({c.email})
+                  </option>
+                ))
+              )}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-[#050505] uppercase tracking-wider mb-1.5">
+              Week Start Date
+            </label>
+            <input
+              type="date"
+              value={weekStartDate}
+              onChange={(e) => setWeekStartDate(e.target.value)}
+              className="w-full px-3.5 py-2 bg-white border border-[#E4E6EA] rounded-lg text-sm text-[#050505] focus:outline-none focus:border-[#0866FF]"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-[#050505] uppercase tracking-wider mb-1.5">
+              Week End Date
+            </label>
+            <input
+              type="date"
+              value={weekEndDate}
+              onChange={(e) => setWeekEndDate(e.target.value)}
+              className="w-full px-3.5 py-2 bg-white border border-[#E4E6EA] rounded-lg text-sm text-[#050505] focus:outline-none focus:border-[#0866FF]"
+            />
+          </div>
         </div>
 
-        <div>
-          <label className="block text-xs font-semibold text-[#050505] uppercase tracking-wider mb-1.5">
-            Week Start Date
-          </label>
-          <input
-            type="date"
-            value={weekStartDate}
-            onChange={(e) => setWeekStartDate(e.target.value)}
-            className="w-full px-3.5 py-2 bg-white border border-[#E4E6EA] rounded-lg text-sm text-[#050505] focus:outline-none focus:border-[#0866FF]"
-          />
-        </div>
-
-        <div>
-          <label className="block text-xs font-semibold text-[#050505] uppercase tracking-wider mb-1.5">
-            Week End Date
-          </label>
-          <input
-            type="date"
-            value={weekEndDate}
-            onChange={(e) => setWeekEndDate(e.target.value)}
-            className="w-full px-3.5 py-2 bg-white border border-[#E4E6EA] rounded-lg text-sm text-[#050505] focus:outline-none focus:border-[#0866FF]"
-          />
-        </div>
+        {/* Saved Client Business Info Banner */}
+        {selectedClient && selectedClient.business_niche && (
+          <div className="p-3 bg-[#0866FF]/5 border border-[#0866FF]/20 rounded-lg text-xs text-[#050505] flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-[#0866FF] shrink-0" />
+              <span>
+                Saved Business Profile: <strong className="text-[#0866FF]">{selectedClient.business_niche}</strong> ({selectedClient.brand_tone || 'Standard Tone'})
+              </span>
+            </div>
+            <span className="text-[#65676B] text-[11px] italic truncate max-w-sm">&quot;{selectedClient.business_description}&quot;</span>
+          </div>
+        )}
       </div>
 
       {/* Day Selector Pill Tabs */}
@@ -319,7 +346,6 @@ export default function AdminNewBatchPage() {
               <div className="flex items-center justify-between border-b border-[#E4E6EA] pb-3">
                 <div className="flex items-center gap-3">
                   <span className="text-xs font-bold text-[#65676B]">Item #{idx + 1}</span>
-                  {/* Type Selector */}
                   <div className="flex bg-[#F0F2F5] p-1 rounded-lg">
                     {(['post', 'reel', 'story'] as const).map((t) => (
                       <button
@@ -352,7 +378,6 @@ export default function AdminNewBatchPage() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {/* Media Uploader / Preview */}
                 <div className="space-y-2">
                   <label className="block text-xs font-semibold text-[#050505] uppercase tracking-wider">
                     Media File (Image / Video)
@@ -383,7 +408,6 @@ export default function AdminNewBatchPage() {
                   </div>
                 </div>
 
-                {/* Caption & AI Generator */}
                 <div className="md:col-span-2 space-y-3">
                   <div className="flex items-center justify-between">
                     <label className="block text-xs font-semibold text-[#050505] uppercase tracking-wider">
@@ -422,7 +446,7 @@ export default function AdminNewBatchPage() {
                           prev.map((i) => (i.id === item.id ? { ...i, hashtags: e.target.value } : i))
                         )
                       }
-                      placeholder="#Skincare #DailyGlow #Beauty"
+                      placeholder="#DigitalAgency #BrandStrategy #WebDesign"
                       className="w-full px-3 py-2 bg-white border border-[#E4E6EA] rounded-lg text-sm text-[#0866FF] font-medium focus:outline-none focus:border-[#0866FF]"
                     />
                   </div>
@@ -447,16 +471,22 @@ export default function AdminNewBatchPage() {
               </button>
             </div>
 
+            {selectedClient?.business_niche && (
+              <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-lg flex items-center gap-2 font-medium">
+                ✓ Auto-filled from {selectedClient.name}&apos;s saved business profile!
+              </div>
+            )}
+
             <div className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-[#050505] uppercase tracking-wider mb-1">
-                  Business Niche
+                  Business Niche / Industry
                 </label>
                 <input
                   type="text"
                   value={aiNiche}
                   onChange={(e) => setAiNiche(e.target.value)}
-                  placeholder="e.g. Luxury Skincare / Fitness Studio / Local Cafe"
+                  placeholder="e.g. Website & Digital Agency"
                   className="w-full px-3.5 py-2 border border-[#E4E6EA] rounded-lg text-sm text-[#050505]"
                 />
               </div>
@@ -469,20 +499,20 @@ export default function AdminNewBatchPage() {
                   type="text"
                   value={aiTone}
                   onChange={(e) => setAiTone(e.target.value)}
-                  placeholder="e.g. Energetic & Inspiring / Sophisticated & Minimal"
+                  placeholder="e.g. Professional, Modern & Tech-savvy"
                   className="w-full px-3.5 py-2 border border-[#E4E6EA] rounded-lg text-sm text-[#050505]"
                 />
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-[#050505] uppercase tracking-wider mb-1">
-                  Image / Visual Description
+                  Image / Visual Concept Description
                 </label>
                 <textarea
                   rows={3}
                   value={aiDescription}
                   onChange={(e) => setAiDescription(e.target.value)}
-                  placeholder="e.g. A woman applying serum on clean skin with natural light"
+                  placeholder="e.g. Showcase our modern web design dashboard mockup for clients"
                   className="w-full p-3 border border-[#E4E6EA] rounded-lg text-sm text-[#050505]"
                 />
               </div>

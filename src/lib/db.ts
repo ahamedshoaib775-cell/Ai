@@ -43,6 +43,10 @@ function initDbSchema(dbInstance: InstanceType<typeof Database>) {
       email TEXT UNIQUE NOT NULL,
       password_hash TEXT NOT NULL,
       is_verified INTEGER DEFAULT 1,
+      business_niche TEXT DEFAULT '',
+      business_description TEXT DEFAULT '',
+      brand_tone TEXT DEFAULT '',
+      onboarding_completed INTEGER DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -97,12 +101,12 @@ function initDbSchema(dbInstance: InstanceType<typeof Database>) {
     );
   `);
 
-  // Migration: ensure is_verified column exists
-  try {
-    dbInstance.exec('ALTER TABLE clients ADD COLUMN is_verified INTEGER DEFAULT 1;');
-  } catch (e) {
-    // Column already exists
-  }
+  // Migrations for existing database instances
+  try { dbInstance.exec('ALTER TABLE clients ADD COLUMN is_verified INTEGER DEFAULT 1;'); } catch (e) {}
+  try { dbInstance.exec("ALTER TABLE clients ADD COLUMN business_niche TEXT DEFAULT '';"); } catch (e) {}
+  try { dbInstance.exec("ALTER TABLE clients ADD COLUMN business_description TEXT DEFAULT '';"); } catch (e) {}
+  try { dbInstance.exec("ALTER TABLE clients ADD COLUMN brand_tone TEXT DEFAULT '';"); } catch (e) {}
+  try { dbInstance.exec('ALTER TABLE clients ADD COLUMN onboarding_completed INTEGER DEFAULT 0;'); } catch (e) {}
 
   const clientCount = dbInstance.prepare('SELECT count(*) as count FROM clients').get() as { count: number };
   if (clientCount.count === 0) {
@@ -115,14 +119,15 @@ function seedInitialData(dbInstance: InstanceType<typeof Database>) {
   const apexId = 'client_apex_fitness';
   const defaultPassword = hashPassword('client123');
 
+  // Add demo clients (mark glow skincare onboarding_completed = 1)
   dbInstance.prepare(`
-    INSERT INTO clients (id, name, email, password_hash, is_verified)
-    VALUES (?, ?, ?, ?, 1)
+    INSERT INTO clients (id, name, email, password_hash, is_verified, business_niche, business_description, brand_tone, onboarding_completed)
+    VALUES (?, ?, ?, ?, 1, 'Beauty & Skincare', 'Botanical skincare products and natural facial treatments.', 'Elegant, inspiring, clean', 1)
   `).run(glowId, 'Glow Skincare Co.', 'glow@skincare.com', defaultPassword);
 
   dbInstance.prepare(`
-    INSERT INTO clients (id, name, email, password_hash, is_verified)
-    VALUES (?, ?, ?, ?, 1)
+    INSERT INTO clients (id, name, email, password_hash, is_verified, business_niche, business_description, brand_tone, onboarding_completed)
+    VALUES (?, ?, ?, ?, 1, 'Fitness & Wellness', 'High-intensity fitness studio and wellness coaching.', 'Energetic, motivational', 0)
   `).run(apexId, 'Apex Fitness Studio', 'apex@fitness.com', defaultPassword);
 
   const batchId = 'batch_glow_week1';

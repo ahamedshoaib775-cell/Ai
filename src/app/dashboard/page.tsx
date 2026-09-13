@@ -15,10 +15,15 @@ import {
   Sparkles,
   X,
   ShieldCheck,
-  Check
+  Check,
+  Building2,
+  Tag,
+  Megaphone
 } from 'lucide-react';
+import ClientOnboardingForm from '@/components/ClientOnboardingForm';
 
 export default function ClientDashboardPage() {
+  const [clientProfile, setClientProfile] = useState<any>(null);
   const [batch, setBatch] = useState<any>(null);
   const [items, setItems] = useState<any[]>([]);
   const [notifications, setNotifications] = useState<any[]>([]);
@@ -33,6 +38,18 @@ export default function ClientDashboardPage() {
   const [submittingEdit, setSubmittingEdit] = useState(false);
   const [feedbackToast, setFeedbackToast] = useState('');
   const [zipping, setZipping] = useState(false);
+
+  const fetchClientProfile = async () => {
+    try {
+      const res = await fetch('/api/clients');
+      if (res.ok) {
+        const data = await res.json();
+        setClientProfile(data.client || null);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   const fetchClientBatch = async () => {
     try {
@@ -63,9 +80,11 @@ export default function ClientDashboardPage() {
   };
 
   useEffect(() => {
+    fetchClientProfile();
     fetchClientBatch();
     fetchNotifications();
     const interval = setInterval(() => {
+      fetchClientProfile();
       fetchClientBatch();
       fetchNotifications();
     }, 5000);
@@ -185,6 +204,8 @@ export default function ClientDashboardPage() {
   const dayItems = items.filter((i) => i.day_number === activeDay);
   const approvedCount = items.filter((i) => i.status === 'approved').length;
 
+  const needsOnboarding = clientProfile && clientProfile.onboarding_completed === 0;
+
   return (
     <div className="min-h-screen bg-white text-[#050505] flex flex-col">
       {/* Header */}
@@ -195,14 +216,13 @@ export default function ClientDashboardPage() {
           </div>
           <div>
             <h1 className="font-bold text-base text-[#050505] tracking-tight">
-              {batch ? batch.client_name : 'Client Content Portal'}
+              {clientProfile ? clientProfile.name : batch ? batch.client_name : 'Client Content Portal'}
             </h1>
             <p className="text-xs text-[#65676B]">7-Day Instagram Content Approval</p>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Download Zip All Approved */}
           {batch && (
             <button
               onClick={handleDownloadAllApproved}
@@ -278,20 +298,43 @@ export default function ClientDashboardPage() {
           </div>
         )}
 
-        {!loading && !batch ? (
-          /* Empty Batch State for newly self-registered clients */
-          <div className="bg-white border border-[#E4E6EA] rounded-2xl p-12 text-center space-y-4 max-w-lg mx-auto shadow-sm my-8">
-            <div className="w-16 h-16 bg-[#0866FF]/10 text-[#0866FF] rounded-2xl flex items-center justify-center mx-auto">
-              <Calendar className="w-8 h-8" />
+        {/* 1. Onboarding Questionnaire Form */}
+        {needsOnboarding ? (
+          <ClientOnboardingForm
+            initialName={clientProfile?.name}
+            onComplete={() => {
+              fetchClientProfile();
+              fetchClientBatch();
+            }}
+          />
+        ) : !loading && !batch ? (
+          /* 2. Business Profile Saved, Waiting for Admin Batch */
+          <div className="bg-white border border-[#E4E6EA] rounded-2xl p-8 sm:p-12 text-center space-y-6 max-w-xl mx-auto shadow-sm my-8">
+            <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mx-auto border border-emerald-200">
+              <CheckCircle2 className="w-9 h-9" />
             </div>
-            <h2 className="text-xl font-bold text-[#050505]">Account Active & Verified!</h2>
-            <p className="text-sm text-[#65676B] leading-relaxed">
-              Welcome to SocialSuite! Your client profile is active. Your social media manager has not uploaded your content batch yet. Once a new 7-day batch is uploaded, it will appear here for your review and approval!
-            </p>
+
+            <div className="space-y-2">
+              <h2 className="text-xl font-bold text-[#050505]">
+                Profile Active: {clientProfile?.name || 'Your Business'}
+              </h2>
+              <p className="text-sm text-[#65676B] leading-relaxed">
+                Your business details (<strong className="text-[#050505]">{clientProfile?.business_niche || 'Custom Niche'}</strong>) have been sent to your social media manager. They are currently creating your custom 7-day Instagram content batch!
+              </p>
+            </div>
+
+            {clientProfile?.business_niche && (
+              <div className="bg-[#F0F2F5] p-4 rounded-xl text-left space-y-2 border border-[#E4E6EA] text-xs">
+                <div className="flex items-center gap-1.5 font-bold text-[#0866FF]">
+                  <Tag className="w-3.5 h-3.5" /> Saved Niche: {clientProfile.business_niche}
+                </div>
+                <p className="text-[#65676B] italic">&quot;{clientProfile.business_description}&quot;</p>
+              </div>
+            )}
           </div>
         ) : (
+          /* 3. Custom Batch Cards Grid */
           <>
-            {/* Batch Info & Mobile Zip Download */}
             <div className="bg-white border border-[#E4E6EA] rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <Calendar className="w-5 h-5 text-[#0866FF]" />
@@ -312,7 +355,6 @@ export default function ClientDashboardPage() {
               </button>
             </div>
 
-            {/* Day Navigation Pill Tabs */}
             <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none border-b border-[#E4E6EA]">
               {[1, 2, 3, 4, 5, 6, 7].map((day) => {
                 const itemsForDay = items.filter((i) => i.day_number === day);
@@ -342,7 +384,6 @@ export default function ClientDashboardPage() {
               })}
             </div>
 
-            {/* Day Card Grid */}
             <div>
               <h2 className="font-bold text-lg text-[#050505] mb-4">Day {activeDay} Content Schedule</h2>
 

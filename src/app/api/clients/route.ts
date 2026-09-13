@@ -5,14 +5,25 @@ import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: Request) {
   const user = await getCurrentUser();
-  if (!user || user.role !== 'admin') {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  // If user is client, return their single client profile
+  if (user.role === 'client') {
+    const client = db.prepare(`
+      SELECT id, name, email, is_verified, business_niche, business_description, brand_tone, onboarding_completed, created_at
+      FROM clients
+      WHERE id = ?
+    `).get(user.id);
+    return NextResponse.json({ client });
+  }
+
+  // Admin GET: list all registered clients with business profile info
   const clients = db.prepare(`
-    SELECT c.id, c.name, c.email, c.created_at, 
+    SELECT c.id, c.name, c.email, c.is_verified, c.business_niche, c.business_description, c.brand_tone, c.onboarding_completed, c.created_at, 
            (SELECT COUNT(*) FROM batches b WHERE b.client_id = c.id) as batch_count
     FROM clients c
     ORDER BY c.created_at DESC
@@ -28,7 +39,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { name, email, password } = await request.json();
+    const { name, email, password, business_niche, business_description, brand_tone } = await request.json();
 
     if (!name || !email || !password) {
       return NextResponse.json({ error: 'Name, email, and password are required' }, { status: 400 });
@@ -41,11 +52,21 @@ export async function POST(request: Request) {
 
     const clientId = 'client_' + crypto.randomUUID().slice(0, 8);
     const passwordHash = hashPassword(password);
+    const hasNiche = business_niche ? 1 : 0;
 
     db.prepare(`
-      INSERT INTO clients (id, name, email, password_hash)
-      VALUES (?, ?, ?, ?)
-    `).run(clientId, name, email.toLowerCase(), passwordHash);
+      INSERT INTO clients (id, name, email, password_hash, is_verified, business_niche, business_description, brand_tone, onboarding_completed)
+      VALUES (?, ?, ?, ?, 1, ?, ?, ?, ?)
+    `).run(
+      clientId,
+      name,
+      email.toLowerCase(),
+      passwordHash,
+      business_niche || '',
+      business_description || '',
+      brand_tone || '',
+      hasNiche
+    );
 
     return NextResponse.json({
       success: true,
@@ -53,5 +74,40 @@ export async function POST(request: Request) {
     });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || 'Failed to create client' }, { status: 500 });
+  }
+}
+
+export async function PATCH(request: Request) {
+  const user = await getCurrentUser();
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  try {
+    const { name, business_niche, business_description, brand_tone, onboarding_completed } = await request.json();
+
+    const targetClientId = user.role === 'admin' ? (await request.json()).client_id || user.id : user.id;
+
+    db.prepare(`
+      UPDATE clients 
+      SET name = COALESCE(?, name),
+          business_niche = COALESCE(?, business_niche),
+          business_description = COALESCE(?, business_description),
+          brand_tone = COALESCE(?, brand_tone),
+          onboarding_completed = COALESCE(?, onboarding_completed)
+      WHERE id = ?
+    `).run(
+      name || null,
+      business_niche !== undefined ? business_niche : null,
+      business_description !== undefined ? business_description : null,
+      brand_tone !== undefined ? brand_tone : null,
+      onboarding_completed !== undefined ? onboarding_completed : null,
+      targetClientId
+    );
+
+    const updatedClient = db.prepare('SELECT * FROM clients WHERE id = ?').get(targetClientId);
+    return NextResponse.json({ success: true, client: updatedClient });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message || 'Failed to update business profile' }, { status: 500 });
   }
 }

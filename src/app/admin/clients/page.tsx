@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Users, UserPlus, Mail, Key, CheckCircle2, X } from 'lucide-react';
+import { Users, UserPlus, Mail, Tag, Megaphone, CheckCircle2, Clock, X } from 'lucide-react';
 
 export default function AdminClientsPage() {
   const [clients, setClients] = useState<any[]>([]);
@@ -10,6 +10,9 @@ export default function AdminClientsPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('client123');
+  const [niche, setNiche] = useState('');
+  const [tone, setTone] = useState('');
+  const [description, setDescription] = useState('');
   const [error, setError] = useState('');
   const [creating, setCreating] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
@@ -42,7 +45,14 @@ export default function AdminClientsPage() {
       const res = await fetch('/api/clients', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password }),
+        body: JSON.stringify({
+          name,
+          email,
+          password,
+          business_niche: niche,
+          brand_tone: tone,
+          business_description: description,
+        }),
       });
 
       const data = await res.json();
@@ -55,6 +65,9 @@ export default function AdminClientsPage() {
       setName('');
       setEmail('');
       setPassword('client123');
+      setNiche('');
+      setTone('');
+      setDescription('');
       setShowModal(false);
       fetchClients();
     } catch (err: any) {
@@ -69,8 +82,10 @@ export default function AdminClientsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-[#050505] tracking-tight">Client Accounts</h1>
-          <p className="text-sm text-[#65676B] mt-1">Manage client profiles and create new access credentials.</p>
+          <h1 className="text-2xl font-bold text-[#050505] tracking-tight">Client Accounts & Business Profiles</h1>
+          <p className="text-sm text-[#65676B] mt-1">
+            Oversee client profiles, view submitted business questionnaires, and create access credentials.
+          </p>
         </div>
         <button
           onClick={() => setShowModal(true)}
@@ -94,7 +109,7 @@ export default function AdminClientsPage() {
       <div className="bg-white border border-[#E4E6EA] rounded-xl overflow-hidden shadow-sm">
         <div className="p-4 border-b border-[#E4E6EA] bg-white flex items-center justify-between">
           <h2 className="font-bold text-sm text-[#050505] flex items-center gap-2">
-            <Users className="w-4 h-4 text-[#0866FF]" /> Registered Clients ({clients.length})
+            <Users className="w-4 h-4 text-[#0866FF]" /> Registered Client Profiles ({clients.length})
           </h2>
         </div>
 
@@ -105,20 +120,50 @@ export default function AdminClientsPage() {
         ) : (
           <div className="divide-y divide-[#E4E6EA]">
             {clients.map((c) => (
-              <div key={c.id} className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-[#F0F2F5]/50 transition-colors">
-                <div className="space-y-1">
-                  <h3 className="font-bold text-base text-[#050505]">{c.name}</h3>
+              <div key={c.id} className="p-5 flex flex-col md:flex-row md:items-start justify-between gap-4 hover:bg-[#F0F2F5]/50 transition-colors">
+                <div className="space-y-2 flex-1">
+                  <div className="flex items-center gap-3">
+                    <h3 className="font-bold text-base text-[#050505]">{c.name}</h3>
+                    {c.onboarding_completed === 1 ? (
+                      <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-bold text-[11px] border border-emerald-200 flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3" /> Profile Completed
+                      </span>
+                    ) : (
+                      <span className="px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 font-bold text-[11px] border border-amber-200 flex items-center gap-1">
+                        <Clock className="w-3 h-3" /> Questionnaire Pending
+                      </span>
+                    )}
+                  </div>
+
                   <div className="flex items-center gap-2 text-xs text-[#65676B]">
-                    <Mail className="w-3.5 h-3.5" />
+                    <Mail className="w-3.5 h-3.5 text-[#0866FF]" />
                     <span>{c.email}</span>
                   </div>
+
+                  {c.business_niche && (
+                    <div className="p-3 bg-[#F0F2F5] rounded-lg border border-[#E4E6EA] text-xs text-[#050505] space-y-1 mt-2">
+                      <div className="flex flex-wrap items-center gap-4 text-[#0866FF] font-semibold">
+                        <span className="flex items-center gap-1">
+                          <Tag className="w-3.5 h-3.5" /> Niche: {c.business_niche}
+                        </span>
+                        {c.brand_tone && (
+                          <span className="flex items-center gap-1 text-[#65676B]">
+                            <Megaphone className="w-3.5 h-3.5 text-[#0866FF]" /> Tone: {c.brand_tone}
+                          </span>
+                        )}
+                      </div>
+                      {c.business_description && (
+                        <p className="text-[#65676B] italic mt-1">&quot;{c.business_description}&quot;</p>
+                      )}
+                    </div>
+                  )}
                 </div>
 
-                <div className="flex items-center gap-4 text-xs">
+                <div className="flex items-center gap-4 text-xs shrink-0">
                   <span className="px-3 py-1 rounded-full bg-[#F0F2F5] text-[#050505] font-medium">
                     Batches: <strong>{c.batch_count}</strong>
                   </span>
-                  <span className="text-[#65676B]">Created: {new Date(c.created_at).toLocaleDateString()}</span>
+                  <span className="text-[#65676B]">Joined: {new Date(c.created_at).toLocaleDateString()}</span>
                 </div>
               </div>
             ))}
@@ -129,7 +174,7 @@ export default function AdminClientsPage() {
       {/* Add Client Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-          <div className="bg-white border border-[#E4E6EA] rounded-xl w-full max-w-md p-6 shadow-2xl space-y-4">
+          <div className="bg-white border border-[#E4E6EA] rounded-xl w-full max-w-md p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-[#E4E6EA] pb-3">
               <h3 className="font-bold text-lg text-[#050505] flex items-center gap-2">
                 <UserPlus className="w-5 h-5 text-[#0866FF]" /> Add New Client Account
@@ -155,7 +200,7 @@ export default function AdminClientsPage() {
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Acme Coffee Co."
+                  placeholder="e.g. Velocity / Acme Coffee Co."
                   className="w-full px-3.5 py-2 bg-white border border-[#E4E6EA] rounded-lg text-sm text-[#050505] focus:outline-none focus:border-[#0866FF]"
                 />
               </div>
@@ -186,6 +231,32 @@ export default function AdminClientsPage() {
                   placeholder="client123"
                   className="w-full px-3.5 py-2 bg-white border border-[#E4E6EA] rounded-lg text-sm text-[#050505] focus:outline-none focus:border-[#0866FF]"
                 />
+              </div>
+
+              <div className="pt-2 border-t border-[#E4E6EA] space-y-3">
+                <p className="text-xs font-bold text-[#0866FF] uppercase tracking-wider">
+                  Optional Business Info
+                </p>
+                <div>
+                  <label className="block text-xs text-[#65676B] mb-1">Niche / Industry</label>
+                  <input
+                    type="text"
+                    value={niche}
+                    onChange={(e) => setNiche(e.target.value)}
+                    placeholder="e.g. Website & Digital Agency"
+                    className="w-full px-3 py-1.5 border border-[#E4E6EA] rounded-lg text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-[#65676B] mb-1">Brand Tone</label>
+                  <input
+                    type="text"
+                    value={tone}
+                    onChange={(e) => setTone(e.target.value)}
+                    placeholder="e.g. Modern, Tech-savvy"
+                    className="w-full px-3 py-1.5 border border-[#E4E6EA] rounded-lg text-xs"
+                  />
+                </div>
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-2">
