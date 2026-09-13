@@ -1,0 +1,128 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #050505;
+  --secondary: #65676B;
+  --accent: #0866FF;
+  --border: #E4E6EA;
+  --hover-bg: #F0F2F5;
+}
+
+body {
+  background-color: #ffffff;
+  color: #050505;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  margin: 0;
+  padding: 0;
+}
+
+/* Custom utility styling for clean Meta UI */
+.meta-bg-white {
+  background-color: #ffffff;
+}
+
+.meta-text-primary {
+  color: #050505;
+}
+
+.meta-text-secondary {
+  color: #65676B;
+}
+
+.meta-border {
+  border: 1px solid #E4E6EA;
+}
+
+.meta-bg-accent {
+  background-color: #0866FF;
+}
+
+.meta-text-accent {
+  color: #0866FF;
+}
+
+.meta-btn-primary {
+  background-color: #0866FF;
+  color: #ffffff;
+  font-weight: 600;
+  border-radius: 8px;
+  padding: 10px 18px;
+  transition: background-color 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.meta-btn-primary:hover {
+  background-color: #0055D4;
+}
+
+.meta-btn-secondary {
+  background-color: #F0F2F5;
+  color: #050505;
+  font-weight: 600;
+  border-radius: 8px;
+  padding: 10px 18px;
+  border: 1px solid #E4E6EA;
+  transition: background-color 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.meta-btn-secondary:hover {
+  background-color: #E4E6EA;
+}
+
+.meta-card {
+  background-color: #ffffff;
+  border: 1px solid #E4E6EA;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.meta-pill-tab {
+  padding: 8px 16px;
+  border-radius: 9999px;
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.15s ease;
+  cursor: pointer;
+}
+
+.meta-pill-tab-active {
+  background-color: #0866FF;
+  color: #ffffff;
+}
+
+.meta-pill-tab-inactive {
+  background-color: #F0F2F5;
+  color: #65676B;
+}
+
+.meta-pill-tab-inactive:hover {
+  background-color: #E4E6EA;
+  color: #050505;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #ffffff;
+}
+::-webkit-scrollbar-thumb {
+  background: #E4E6EA;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #bcc0c4;
+}
