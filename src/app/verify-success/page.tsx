@@ -3,13 +3,14 @@
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { CheckCircle2, ArrowRight } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
 
 function VerifyContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const email = searchParams.get('email');
+  const urlEmail = searchParams.get('email');
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -17,16 +18,41 @@ function VerifyContent() {
 
   useEffect(() => {
     async function verifyAccount() {
-      if (!email) {
-        setLoading(false);
-        return;
-      }
-
       try {
+        let emailToVerify = urlEmail;
+
+        // 1. Try fetching email from Supabase Auth session (if redirect came from Supabase email link)
+        if (!emailToVerify) {
+          const { data } = await supabase.auth.getSession();
+          if (data?.session?.user?.email) {
+            emailToVerify = data.session.user.email;
+          }
+        }
+
+        // 2. Parse hash params if Supabase redirected with #access_token=...
+        if (!emailToVerify && typeof window !== 'undefined' && window.location.hash) {
+          const hashParams = new URLSearchParams(window.location.hash.substring(1));
+          const accessToken = hashParams.get('access_token');
+          if (accessToken) {
+            const { data } = await supabase.auth.getUser(accessToken);
+            if (data?.user?.email) {
+              emailToVerify = data.user.email;
+            }
+          }
+        }
+
+        if (!emailToVerify) {
+          // If still no email detected, try getting current logged in user or query param
+          setError('Email verification token missing or expired. Please sign in or resend link.');
+          setLoading(false);
+          return;
+        }
+
+        // 3. Mark account as verified in DB and create session cookie
         const res = await fetch('/api/auth/verify', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email }),
+          body: JSON.stringify({ email: emailToVerify }),
         });
 
         const data = await res.json();
@@ -36,6 +62,7 @@ function VerifyContent() {
 
         setClientName(data.user?.name || '');
 
+        // Redirect to /dashboard after 2 seconds
         setTimeout(() => {
           router.push('/dashboard');
         }, 2000);
@@ -47,7 +74,7 @@ function VerifyContent() {
     }
 
     verifyAccount();
-  }, [email, router]);
+  }, [urlEmail, router]);
 
   return (
     <div className="bg-white border border-[#E4E6EA] rounded-xl p-8 shadow-sm text-center space-y-6">
@@ -58,7 +85,7 @@ function VerifyContent() {
       <div className="space-y-2">
         <h1 className="text-2xl font-bold text-[#050505] tracking-tight">Email Verified!</h1>
         <p className="text-sm text-[#65676B] leading-relaxed">
-          {clientName ? `Welcome, ${clientName}! ` : ''}Your email address has been successfully verified.
+          {clientName ? `Welcome, ${clientName}! ` : ''}Your account has been successfully verified.
         </p>
       </div>
 
