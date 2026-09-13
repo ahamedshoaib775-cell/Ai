@@ -11,25 +11,27 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  // If user is client, return their single client profile
-  if (user.role === 'client') {
-    const client = db.prepare(`
-      SELECT id, name, email, is_verified, business_niche, business_description, brand_tone, onboarding_completed, created_at
-      FROM clients
-      WHERE id = ? OR LOWER(email) = LOWER(?)
-    `).get(user.id, user.email);
-    return NextResponse.json({ client });
+  const { searchParams } = new URL(request.url);
+  const fetchAll = searchParams.get('all') === 'true' || user.role === 'admin';
+
+  if (fetchAll) {
+    const clients = db.prepare(`
+      SELECT c.id, c.name, c.email, c.is_verified, c.business_niche, c.business_description, c.brand_tone, c.onboarding_completed, c.created_at, 
+             (SELECT COUNT(*) FROM batches b WHERE b.client_id = c.id OR LOWER(b.client_id) = LOWER(c.email)) as batch_count
+      FROM clients c
+      ORDER BY c.created_at DESC
+    `).all();
+    return NextResponse.json({ clients });
   }
 
-  // Admin GET: list all registered clients with business profile info
-  const clients = db.prepare(`
-    SELECT c.id, c.name, c.email, c.is_verified, c.business_niche, c.business_description, c.brand_tone, c.onboarding_completed, c.created_at, 
-           (SELECT COUNT(*) FROM batches b WHERE b.client_id = c.id) as batch_count
-    FROM clients c
-    ORDER BY c.created_at DESC
-  `).all();
+  // If user is client and not requesting all, return single client profile
+  const client = db.prepare(`
+    SELECT id, name, email, is_verified, business_niche, business_description, brand_tone, onboarding_completed, created_at
+    FROM clients
+    WHERE id = ? OR LOWER(email) = LOWER(?)
+  `).get(user.id, user.email);
 
-  return NextResponse.json({ clients });
+  return NextResponse.json({ client });
 }
 
 export async function POST(request: Request) {

@@ -13,8 +13,8 @@ export default function AdminOverviewPage() {
     async function loadData() {
       try {
         const [batchRes, clientRes] = await Promise.all([
-          fetch('/api/batches'),
-          fetch('/api/clients'),
+          fetch('/api/batches?all=true'),
+          fetch('/api/clients?all=true'),
         ]);
 
         if (batchRes.ok) {

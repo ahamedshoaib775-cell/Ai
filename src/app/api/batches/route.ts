@@ -12,8 +12,25 @@ export async function GET(request: Request) {
   }
 
   const { searchParams } = new URL(request.url);
-  
-  if (user.role === 'client') {
+  const fetchAll = searchParams.get('all') === 'true' || user.role === 'admin';
+  const targetClientId = searchParams.get('client_id');
+
+  // Admin overview or explicit request for all batches
+  if (fetchAll && !targetClientId) {
+    const batches = db.prepare(`
+      SELECT b.*, c.name as client_name, c.email as client_email,
+        (SELECT COUNT(*) FROM content_items ci WHERE ci.batch_id = b.id) as item_count,
+        (SELECT COUNT(*) FROM content_items ci WHERE ci.batch_id = b.id AND ci.status = 'approved') as approved_count,
+        (SELECT COUNT(*) FROM content_items ci WHERE ci.batch_id = b.id AND ci.status = 'edit_requested') as edit_requested_count
+      FROM batches b
+      JOIN clients c ON c.id = b.client_id
+      ORDER BY b.created_at DESC
+    `).all();
+
+    return NextResponse.json({ batches });
+  }
+
+  if (user.role === 'client' && !targetClientId) {
     // Resolve client DB ID via user.id or user.email
     const clientRow = db.prepare(`
       SELECT id, email FROM clients WHERE id = ? OR LOWER(email) = LOWER(?)
@@ -48,7 +65,6 @@ export async function GET(request: Request) {
     return NextResponse.json({ batch, items });
   }
 
-  const targetClientId = searchParams.get('client_id');
   if (targetClientId) {
     // Get latest batch for specific client
     const batch = db.prepare(`
