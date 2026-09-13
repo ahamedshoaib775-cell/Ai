@@ -108,10 +108,13 @@ function initDbSchema(dbInstance: InstanceType<typeof Database>) {
   try { dbInstance.exec("ALTER TABLE clients ADD COLUMN brand_tone TEXT DEFAULT '';"); } catch (e) {}
   try { dbInstance.exec('ALTER TABLE clients ADD COLUMN onboarding_completed INTEGER DEFAULT 0;'); } catch (e) {}
 
+  // Clean database mode: initial seed data disabled for fresh user onboarding
+  /*
   const clientCount = dbInstance.prepare('SELECT count(*) as count FROM clients').get() as { count: number };
   if (clientCount.count === 0) {
     seedInitialData(dbInstance);
   }
+  */
 }
 
 function seedInitialData(dbInstance: InstanceType<typeof Database>) {
