@@ -12,22 +12,53 @@ export async function GET(request: Request) {
   }
 
   const { searchParams } = new URL(request.url);
-  const targetClientId = user.role === 'client' ? user.id : searchParams.get('client_id');
+  
+  if (user.role === 'client') {
+    // Resolve client DB ID via user.id or user.email
+    const clientRow = db.prepare(`
+      SELECT id, email FROM clients WHERE id = ? OR LOWER(email) = LOWER(?)
+    `).get(user.id, user.email) as { id: string; email: string } | undefined;
 
-  if (user.role === 'client' && targetClientId !== user.id) {
-    return NextResponse.json({ error: 'Forbidden: You can only view your own content.' }, { status: 403 });
+    const clientId = clientRow?.id || user.id;
+    const clientEmail = clientRow?.email || user.email;
+
+    // Get latest batch for this client
+    const batch = db.prepare(`
+      SELECT b.*, c.name as client_name, c.email as client_email
+      FROM batches b
+      JOIN clients c ON c.id = b.client_id
+      WHERE b.client_id = ? OR LOWER(c.email) = LOWER(?)
+      ORDER BY b.created_at DESC
+      LIMIT 1
+    `).get(clientId, clientEmail) as any;
+
+    if (!batch) {
+      return NextResponse.json({ batch: null, items: [] });
+    }
+
+    const items = db.prepare(`
+      SELECT ci.*, 
+        (SELECT er.client_note FROM edit_requests er WHERE er.content_item_id = ci.id AND er.status != 'done' ORDER BY er.created_at DESC LIMIT 1) as client_note,
+        (SELECT er.id FROM edit_requests er WHERE er.content_item_id = ci.id AND er.status != 'done' ORDER BY er.created_at DESC LIMIT 1) as active_edit_request_id
+      FROM content_items ci
+      WHERE ci.batch_id = ?
+      ORDER BY ci.day_number ASC, ci.created_at ASC
+    `).all(batch.id);
+
+    return NextResponse.json({ batch, items });
   }
 
+  const targetClientId = searchParams.get('client_id');
   if (targetClientId) {
     // Get latest batch for specific client
     const batch = db.prepare(`
       SELECT b.*, c.name as client_name, c.email as client_email
       FROM batches b
       JOIN clients c ON c.id = b.client_id
-      WHERE b.client_id = ?
+      WHERE b.client_id = ? OR LOWER(c.email) = LOWER(?)
       ORDER BY b.created_at DESC
       LIMIT 1
-    `).get(targetClientId) as any;
+    `).get(targetClientId, targetClientId) as any;
 
     if (!batch) {
       return NextResponse.json({ batch: null, items: [] });

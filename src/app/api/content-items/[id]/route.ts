@@ -24,8 +24,13 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     return NextResponse.json({ error: 'Content item not found' }, { status: 404 });
   }
 
-  if (user.role === 'client' && item.client_id !== user.id) {
-    return NextResponse.json({ error: 'Forbidden: Cannot update content for another client' }, { status: 403 });
+  if (user.role === 'client') {
+    const clientRow = db.prepare('SELECT id FROM clients WHERE id = ? OR LOWER(email) = LOWER(?)').get(user.id, user.email) as { id: string } | undefined;
+    const canonicalClientId = clientRow?.id || user.id;
+
+    if (item.client_id !== canonicalClientId) {
+      return NextResponse.json({ error: 'Forbidden: Cannot update content for another client' }, { status: 403 });
+    }
   }
 
   // Update item

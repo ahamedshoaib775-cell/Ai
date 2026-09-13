@@ -16,8 +16,8 @@ export async function GET(request: Request) {
     const client = db.prepare(`
       SELECT id, name, email, is_verified, business_niche, business_description, brand_tone, onboarding_completed, created_at
       FROM clients
-      WHERE id = ?
-    `).get(user.id);
+      WHERE id = ? OR LOWER(email) = LOWER(?)
+    `).get(user.id, user.email);
     return NextResponse.json({ client });
   }
 

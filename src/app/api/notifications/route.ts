@@ -25,10 +25,11 @@ export async function GET() {
   } else {
     notifications = db.prepare(`
       SELECT * FROM notifications
-      WHERE recipient_role = 'client' AND recipient_id = ?
+      WHERE recipient_role = 'client' 
+        AND (recipient_id = ? OR recipient_id IN (SELECT id FROM clients WHERE LOWER(email) = LOWER(?)))
       ORDER BY created_at DESC
       LIMIT 30
-    `).all(user.id);
+    `).all(user.id, user.email);
   }
 
   const unreadCount = notifications.filter((n) => !n.is_read).length;
@@ -48,7 +49,12 @@ export async function PATCH(request: Request) {
     if (user.role === 'admin') {
       db.prepare(`UPDATE notifications SET is_read = 1 WHERE recipient_role = 'admin'`).run();
     } else {
-      db.prepare(`UPDATE notifications SET is_read = 1 WHERE recipient_role = 'client' AND recipient_id = ?`).run(user.id);
+      db.prepare(`
+        UPDATE notifications 
+        SET is_read = 1 
+        WHERE recipient_role = 'client' 
+          AND (recipient_id = ? OR recipient_id IN (SELECT id FROM clients WHERE LOWER(email) = LOWER(?)))
+      `).run(user.id, user.email);
     }
     return NextResponse.json({ success: true });
   }

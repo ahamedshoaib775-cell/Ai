@@ -51,7 +51,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Content item not found' }, { status: 404 });
     }
 
-    if (item.client_id !== user.id) {
+    const clientRow = db.prepare('SELECT id FROM clients WHERE id = ? OR LOWER(email) = LOWER(?)').get(user.id, user.email) as { id: string } | undefined;
+    const canonicalClientId = clientRow?.id || user.id;
+
+    if (item.client_id !== canonicalClientId) {
       return NextResponse.json({ error: 'Forbidden: Cannot edit content of another client' }, { status: 403 });
     }
 
