@@ -15,7 +15,7 @@ export async function GET(request: Request) {
   const fetchAll = searchParams.get('all') === 'true' || user.role === 'admin';
 
   if (fetchAll) {
-    const clients = db.prepare(`
+    const clients = await db.prepare(`
       SELECT c.id, c.name, c.email, c.is_verified, c.business_niche, c.business_description, c.brand_tone, c.onboarding_completed, c.created_at, 
              (SELECT COUNT(*) FROM batches b WHERE b.client_id = c.id OR LOWER(b.client_id) = LOWER(c.email)) as batch_count
       FROM clients c
@@ -25,7 +25,7 @@ export async function GET(request: Request) {
   }
 
   // If user is client and not requesting all, return single client profile
-  const client = db.prepare(`
+  const client = await db.prepare(`
     SELECT id, name, email, is_verified, business_niche, business_description, brand_tone, onboarding_completed, created_at
     FROM clients
     WHERE id = ? OR LOWER(email) = LOWER(?)
@@ -47,7 +47,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Name, email, and password are required' }, { status: 400 });
     }
 
-    const existing = db.prepare('SELECT id FROM clients WHERE email = ?').get(email.toLowerCase());
+    const existing = await db.prepare('SELECT id FROM clients WHERE email = ?').get(email.toLowerCase());
     if (existing) {
       return NextResponse.json({ error: 'Client with this email already exists' }, { status: 400 });
     }
@@ -56,7 +56,7 @@ export async function POST(request: Request) {
     const passwordHash = hashPassword(password);
     const hasNiche = business_niche ? 1 : 0;
 
-    db.prepare(`
+    await db.prepare(`
       INSERT INTO clients (id, name, email, password_hash, is_verified, business_niche, business_description, brand_tone, onboarding_completed)
       VALUES (?, ?, ?, ?, 1, ?, ?, ?, ?)
     `).run(
@@ -86,28 +86,25 @@ export async function PATCH(request: Request) {
   }
 
   try {
-    const { name, business_niche, business_description, brand_tone, onboarding_completed } = await request.json();
+    const body = await request.json();
+    const { name, business_niche, business_description, brand_tone, onboarding_completed } = body;
 
-    const targetClientId = user.role === 'admin' ? (await request.json()).client_id || user.id : user.id;
+    const targetClientId = user.role === 'admin' ? body.client_id || user.id : user.id;
 
-    db.prepare(`
+    await db.prepare(`
       UPDATE clients 
-      SET name = COALESCE(?, name),
-          business_niche = COALESCE(?, business_niche),
-          business_description = COALESCE(?, business_description),
-          brand_tone = COALESCE(?, brand_tone),
-          onboarding_completed = COALESCE(?, onboarding_completed)
+      SET business_niche = ?, business_description = ?, brand_tone = ?, onboarding_completed = ?
       WHERE id = ?
     `).run(
-      name || null,
-      business_niche !== undefined ? business_niche : null,
-      business_description !== undefined ? business_description : null,
-      brand_tone !== undefined ? brand_tone : null,
-      onboarding_completed !== undefined ? onboarding_completed : null,
+      business_niche || '',
+      business_description || '',
+      brand_tone || '',
+      onboarding_completed ?? 1,
       targetClientId
     );
 
-    const updatedClient = db.prepare('SELECT * FROM clients WHERE id = ?').get(targetClientId);
+    const updatedClient = await db.prepare('SELECT * FROM clients WHERE id = ?').get(targetClientId);
+    return NextResponse.json({ success: true, client: updatedClient });
     return NextResponse.json({ success: true, client: updatedClient });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || 'Failed to update business profile' }, { status: 500 });

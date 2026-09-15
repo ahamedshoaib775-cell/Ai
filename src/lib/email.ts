@@ -11,9 +11,9 @@ export interface SendEmailPayload {
 export async function sendEmail({ to, subject, body }: SendEmailPayload): Promise<{ success: boolean; id: string }> {
   const id = 'email_' + crypto.randomUUID();
 
-  // 1. Record email in SQLite outbox table for live visual inspection inside Admin panel
+  // 1. Record email in outbox table for live visual inspection inside Admin panel
   try {
-    db.prepare(`
+    await db.prepare(`
       INSERT INTO emails_outbox (id, to_email, subject, body, status)
       VALUES (?, ?, ?, ?, 'sent')
     `).run(id, to, subject, body);
@@ -54,6 +54,6 @@ export async function sendEmail({ to, subject, body }: SendEmailPayload): Promis
   return { success: true, id };
 }
 
-export function getOutboxEmails() {
-  return db.prepare('SELECT * FROM emails_outbox ORDER BY created_at DESC LIMIT 50').all();
+export async function getOutboxEmails() {
+  return await db.prepare('SELECT * FROM emails_outbox ORDER BY created_at DESC LIMIT 50').all();
 }

@@ -10,6 +10,6 @@ export async function GET() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const emails = getOutboxEmails();
+  const emails = await getOutboxEmails();
   return NextResponse.json({ emails });
 }

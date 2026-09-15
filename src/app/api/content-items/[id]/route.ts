@@ -13,19 +13,19 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   const { status, file_url, caption, hashtags } = body;
 
   // Check ownership if user is client
-  const item = db.prepare(`
+  const item = (await db.prepare(`
     SELECT ci.*, b.client_id
     FROM content_items ci
     JOIN batches b ON b.id = ci.batch_id
     WHERE ci.id = ?
-  `).get(id) as { id: string; client_id: string; status: string } | undefined;
+  `).get(id)) as { id: string; client_id: string; status: string } | undefined;
 
   if (!item) {
     return NextResponse.json({ error: 'Content item not found' }, { status: 404 });
   }
 
   if (user.role === 'client') {
-    const clientRow = db.prepare('SELECT id FROM clients WHERE id = ? OR LOWER(email) = LOWER(?)').get(user.id, user.email) as { id: string } | undefined;
+    const clientRow = (await db.prepare('SELECT id FROM clients WHERE id = ? OR LOWER(email) = LOWER(?)').get(user.id, user.email)) as { id: string } | undefined;
     const canonicalClientId = clientRow?.id || user.id;
 
     if (item.client_id !== canonicalClientId) {
@@ -59,7 +59,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   }
 
   params.push(id);
-  db.prepare(`UPDATE content_items SET ${updates.join(', ')} WHERE id = ?`).run(...params);
+  await db.prepare(`UPDATE content_items SET ${updates.join(', ')} WHERE id = ?`).run(...params);
 
   return NextResponse.json({ success: true, item: { ...item, status, file_url, caption, hashtags } });
 }

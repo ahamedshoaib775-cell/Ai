@@ -13,7 +13,7 @@ export async function POST(request: Request) {
 
     const cleanEmail = email.toLowerCase().trim();
 
-    const client = db.prepare('SELECT name, is_verified FROM clients WHERE email = ?').get(cleanEmail) as {
+    const client = (await db.prepare('SELECT name, is_verified FROM clients WHERE email = ?').get(cleanEmail)) as {
       name: string;
       is_verified: number;
     } | undefined;

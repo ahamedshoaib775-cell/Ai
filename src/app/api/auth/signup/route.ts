@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     const cleanEmail = email.toLowerCase().trim();
 
     // Check existing client
-    const existing = db.prepare('SELECT id, is_verified FROM clients WHERE email = ?').get(cleanEmail) as {
+    const existing = (await db.prepare('SELECT id, is_verified FROM clients WHERE email = ?').get(cleanEmail)) as {
       id: string;
       is_verified: number;
     } | undefined;
@@ -29,7 +29,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'An account with this email already exists' }, { status: 400 });
       } else {
         // Allow re-signing up or resending verification for unverified account
-        db.prepare('DELETE FROM clients WHERE email = ? AND is_verified = 0').run(cleanEmail);
+        await db.prepare('DELETE FROM clients WHERE email = ? AND is_verified = 0').run(cleanEmail);
       }
     }
 
@@ -60,7 +60,7 @@ export async function POST(request: Request) {
     const clientId = supabaseUserId || 'client_' + crypto.randomUUID().slice(0, 8);
     const passwordHash = hashPassword(password);
 
-    db.prepare(`
+    await db.prepare(`
       INSERT INTO clients (id, name, email, password_hash, is_verified)
       VALUES (?, ?, ?, ?, 0)
     `).run(clientId, name, cleanEmail, passwordHash);

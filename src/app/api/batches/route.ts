@@ -18,18 +18,18 @@ export async function GET(request: Request) {
 
   // If specific batch_id requested
   if (batchIdParam) {
-    const batch = db.prepare(`
+    const batch = (await db.prepare(`
       SELECT b.*, c.name as client_name, c.email as client_email
       FROM batches b
       JOIN clients c ON c.id = b.client_id
       WHERE b.id = ?
-    `).get(batchIdParam) as any;
+    `).get(batchIdParam)) as any;
 
     if (!batch) {
       return NextResponse.json({ batch: null, items: [] });
     }
 
-    const items = db.prepare(`
+    const items = await db.prepare(`
       SELECT ci.*, 
         (SELECT er.client_note FROM edit_requests er WHERE er.content_item_id = ci.id AND er.status != 'done' ORDER BY er.created_at DESC LIMIT 1) as client_note,
         (SELECT er.id FROM edit_requests er WHERE er.content_item_id = ci.id AND er.status != 'done' ORDER BY er.created_at DESC LIMIT 1) as active_edit_request_id
@@ -43,7 +43,7 @@ export async function GET(request: Request) {
 
   // Admin overview or explicit request for all batches
   if (fetchAll && !targetClientId) {
-    const batches = db.prepare(`
+    const batches = await db.prepare(`
       SELECT b.*, c.name as client_name, c.email as client_email,
         (SELECT COUNT(*) FROM content_items ci WHERE ci.batch_id = b.id) as item_count,
         (SELECT COUNT(*) FROM content_items ci WHERE ci.batch_id = b.id AND ci.status = 'approved') as approved_count,
@@ -58,28 +58,28 @@ export async function GET(request: Request) {
 
   if (user.role === 'client' && !targetClientId) {
     // Resolve client DB ID via user.id or user.email
-    const clientRow = db.prepare(`
+    const clientRow = (await db.prepare(`
       SELECT id, email FROM clients WHERE id = ? OR LOWER(email) = LOWER(?)
-    `).get(user.id, user.email) as { id: string; email: string } | undefined;
+    `).get(user.id, user.email)) as { id: string; email: string } | undefined;
 
     const clientId = clientRow?.id || user.id;
     const clientEmail = clientRow?.email || user.email;
 
     // Get latest batch for this client
-    const batch = db.prepare(`
+    const batch = (await db.prepare(`
       SELECT b.*, c.name as client_name, c.email as client_email
       FROM batches b
       JOIN clients c ON c.id = b.client_id
       WHERE b.client_id = ? OR LOWER(c.email) = LOWER(?)
       ORDER BY b.created_at DESC
       LIMIT 1
-    `).get(clientId, clientEmail) as any;
+    `).get(clientId, clientEmail)) as any;
 
     if (!batch) {
       return NextResponse.json({ batch: null, items: [] });
     }
 
-    const items = db.prepare(`
+    const items = await db.prepare(`
       SELECT ci.*, 
         (SELECT er.client_note FROM edit_requests er WHERE er.content_item_id = ci.id AND er.status != 'done' ORDER BY er.created_at DESC LIMIT 1) as client_note,
         (SELECT er.id FROM edit_requests er WHERE er.content_item_id = ci.id AND er.status != 'done' ORDER BY er.created_at DESC LIMIT 1) as active_edit_request_id
@@ -93,20 +93,20 @@ export async function GET(request: Request) {
 
   if (targetClientId) {
     // Get latest batch for specific client
-    const batch = db.prepare(`
+    const batch = (await db.prepare(`
       SELECT b.*, c.name as client_name, c.email as client_email
       FROM batches b
       JOIN clients c ON c.id = b.client_id
       WHERE b.client_id = ? OR LOWER(c.email) = LOWER(?)
       ORDER BY b.created_at DESC
       LIMIT 1
-    `).get(targetClientId, targetClientId) as any;
+    `).get(targetClientId, targetClientId)) as any;
 
     if (!batch) {
       return NextResponse.json({ batch: null, items: [] });
     }
 
-    const items = db.prepare(`
+    const items = await db.prepare(`
       SELECT ci.*, 
         (SELECT er.client_note FROM edit_requests er WHERE er.content_item_id = ci.id AND er.status != 'done' ORDER BY er.created_at DESC LIMIT 1) as client_note,
         (SELECT er.id FROM edit_requests er WHERE er.content_item_id = ci.id AND er.status != 'done' ORDER BY er.created_at DESC LIMIT 1) as active_edit_request_id
@@ -120,7 +120,7 @@ export async function GET(request: Request) {
 
   // Admin fetching overview of all batches
   if (user.role === 'admin') {
-    const batches = db.prepare(`
+    const batches = await db.prepare(`
       SELECT b.*, c.name as client_name, c.email as client_email,
         (SELECT COUNT(*) FROM content_items ci WHERE ci.batch_id = b.id) as item_count,
         (SELECT COUNT(*) FROM content_items ci WHERE ci.batch_id = b.id AND ci.status = 'approved') as approved_count,
@@ -151,20 +151,18 @@ export async function POST(request: Request) {
 
     const batchId = 'batch_' + crypto.randomUUID().slice(0, 8);
 
-    db.prepare(`
+    await db.prepare(`
       INSERT INTO batches (id, client_id, week_start_date, week_end_date)
       VALUES (?, ?, ?, ?)
     `).run(batchId, client_id, week_start_date, week_end_date);
 
-    const insertItem = db.prepare(`
-      INSERT INTO content_items (id, batch_id, day_number, type, file_url, caption, hashtags, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')
-    `);
-
     for (const item of items) {
       if (!item.file_url || !item.day_number || !item.type) continue;
       const itemId = 'item_' + crypto.randomUUID().slice(0, 8);
-      insertItem.run(
+      await db.prepare(`
+        INSERT INTO content_items (id, batch_id, day_number, type, file_url, caption, hashtags, status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')
+      `).run(
         itemId,
         batchId,
         item.day_number,
@@ -176,8 +174,8 @@ export async function POST(request: Request) {
     }
 
     // Add notification to client about new batch ready
-    const client = db.prepare('SELECT name FROM clients WHERE id = ?').get(client_id) as { name: string } | undefined;
-    db.prepare(`
+    const client = (await db.prepare('SELECT name FROM clients WHERE id = ?').get(client_id)) as { name: string } | undefined;
+    await db.prepare(`
       INSERT INTO notifications (id, recipient_role, recipient_id, message)
       VALUES (?, 'client', ?, ?)
     `).run(

@@ -10,7 +10,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
     }
 
-    const result = authenticateUser(email, password);
+    const result = await authenticateUser(email, password);
 
     if (result.unverified) {
       return NextResponse.json(

@@ -36,7 +36,7 @@ export interface AuthResult {
   unverified?: boolean;
 }
 
-export function authenticateUser(email: string, password_input: string): AuthResult {
+export async function authenticateUser(email: string, password_input: string): Promise<AuthResult> {
   // Check Admin Login (admin@socialsuite.com / admin123)
   if (email.toLowerCase() === 'admin@socialsuite.com') {
     if (password_input === 'admin123' || hashPassword(password_input) === hashPassword('admin123')) {
@@ -53,7 +53,7 @@ export function authenticateUser(email: string, password_input: string): AuthRes
   }
 
   // Check Client Login in database
-  const client = db.prepare('SELECT * FROM clients WHERE email = ?').get(email.toLowerCase()) as {
+  const client = (await db.prepare('SELECT * FROM clients WHERE email = ?').get(email.toLowerCase())) as {
     id: string;
     name: string;
     email: string;

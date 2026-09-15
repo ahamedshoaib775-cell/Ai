@@ -12,7 +12,7 @@ export async function GET() {
 
   let notifications: any[] = [];
   if (user.role === 'admin') {
-    notifications = db.prepare(`
+    notifications = await db.prepare(`
       SELECT n.*, ci.day_number, ci.type, ci.file_url, c.name as client_name
       FROM notifications n
       LEFT JOIN content_items ci ON ci.id = n.related_content_item_id
@@ -23,7 +23,7 @@ export async function GET() {
       LIMIT 30
     `).all();
   } else {
-    notifications = db.prepare(`
+    notifications = await db.prepare(`
       SELECT * FROM notifications
       WHERE recipient_role = 'client' 
         AND (recipient_id = ? OR recipient_id IN (SELECT id FROM clients WHERE LOWER(email) = LOWER(?)))
@@ -47,9 +47,9 @@ export async function PATCH(request: Request) {
 
   if (markAllRead) {
     if (user.role === 'admin') {
-      db.prepare(`UPDATE notifications SET is_read = 1 WHERE recipient_role = 'admin'`).run();
+      await db.prepare(`UPDATE notifications SET is_read = 1 WHERE recipient_role = 'admin'`).run();
     } else {
-      db.prepare(`
+      await db.prepare(`
         UPDATE notifications 
         SET is_read = 1 
         WHERE recipient_role = 'client' 
@@ -60,7 +60,7 @@ export async function PATCH(request: Request) {
   }
 
   if (id) {
-    db.prepare(`UPDATE notifications SET is_read = 1 WHERE id = ?`).run(id);
+    await db.prepare(`UPDATE notifications SET is_read = 1 WHERE id = ?`).run(id);
     return NextResponse.json({ success: true });
   }
 

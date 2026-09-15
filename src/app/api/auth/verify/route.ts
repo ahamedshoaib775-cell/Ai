@@ -12,7 +12,7 @@ export async function POST(request: Request) {
 
     const cleanEmail = email.toLowerCase().trim();
 
-    const client = db.prepare('SELECT id, name, email FROM clients WHERE email = ?').get(cleanEmail) as {
+    const client = (await db.prepare('SELECT id, name, email FROM clients WHERE email = ?').get(cleanEmail)) as {
       id: string;
       name: string;
       email: string;
@@ -23,7 +23,7 @@ export async function POST(request: Request) {
     }
 
     // Set is_verified = 1
-    db.prepare('UPDATE clients SET is_verified = 1 WHERE email = ?').run(cleanEmail);
+    await db.prepare('UPDATE clients SET is_verified = 1 WHERE email = ?').run(cleanEmail);
 
     // Issue session cookie so client is automatically logged in and routed to /dashboard
     const userSession = {

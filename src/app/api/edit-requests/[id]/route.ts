@@ -12,21 +12,21 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   const { id } = await context.params;
   const { replacement_file_url, new_caption, new_hashtags, status } = await request.json();
 
-  const editReq = db.prepare(`
+  const editReq = (await db.prepare(`
     SELECT er.*, ci.id as item_id, ci.day_number, ci.type, b.client_id, c.name as client_name
     FROM edit_requests er
     JOIN content_items ci ON ci.id = er.content_item_id
     JOIN batches b ON b.id = ci.batch_id
     JOIN clients c ON c.id = b.client_id
     WHERE er.id = ?
-  `).get(id) as any;
+  `).get(id)) as any;
 
   if (!editReq) {
     return NextResponse.json({ error: 'Edit request not found' }, { status: 404 });
   }
 
   // Update edit request status
-  db.prepare(`UPDATE edit_requests SET status = ? WHERE id = ?`).run(status || 'done', id);
+  await db.prepare(`UPDATE edit_requests SET status = ? WHERE id = ?`).run(status || 'done', id);
 
   // If marking done, update item back to 'pending' with optional new media/caption
   if ((status || 'done') === 'done') {
@@ -47,12 +47,12 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     }
 
     itemParams.push(editReq.item_id);
-    db.prepare(`UPDATE content_items SET ${itemUpdates.join(', ')} WHERE id = ?`).run(...itemParams);
+    await db.prepare(`UPDATE content_items SET ${itemUpdates.join(', ')} WHERE id = ?`).run(...itemParams);
 
     // Notify client in-app
     const typeTitle = editReq.type.charAt(0).toUpperCase() + editReq.type.slice(1);
     const notifMessage = `Your edit for Day ${editReq.day_number} [${typeTitle}] has been updated and is ready for review!`;
-    db.prepare(`
+    await db.prepare(`
       INSERT INTO notifications (id, recipient_role, recipient_id, message, related_content_item_id, is_read)
       VALUES (?, 'client', ?, ?, ?, 0)
     `).run('notif_' + crypto.randomUUID().slice(0, 8), editReq.client_id, notifMessage, editReq.item_id);
